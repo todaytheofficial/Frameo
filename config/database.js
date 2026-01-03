@@ -1,12 +1,13 @@
 /**
  * config/database.js
- * Прямое подключение для устранения ошибки ECONNREFUSED
+ * Вариант с "зашитыми" данными (Hardcoded)
+ * Работает без настройки переменных в Render
  */
 
 const mysql = require('mysql2/promise');
 
-// Мы используем данные напрямую, чтобы исключить ошибку переменных
-const dbConfig = {
+// Прямые данные для подключения к Clever Cloud
+const pool = mysql.createPool({
     host: 'bbrmoi0qdtjqbvctknfg-mysql.services.clever-cloud.com', 
     user: 'uqexiir2rgm3cunz', 
     password: 'CW8asr6RhWONjpfvGPVH', 
@@ -15,25 +16,27 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: 5,
     queueLimit: 0,
-    // ВАЖНО: SSL обязателен для связи Render -> Clever Cloud
+    // ОБЯЗАТЕЛЬНО для работы Render -> Clever Cloud
     ssl: {
         rejectUnauthorized: false
     }
-};
+});
 
-const pool = mysql.createPool(dbConfig);
-
+/**
+ * Инициализация таблиц
+ */
 async function initDatabase() {
     try {
-        console.log(`🔌 [DEBUG] Попытка подключения к: ${dbConfig.host}`);
+        console.log(`🔌 Подключение к базе данных...`);
         
-        // Тестовое соединение
+        // Проверка соединения
         const connection = await pool.getConnection();
-        console.log('✅ [DEBUG] УСПЕХ! База данных подключена.');
+        console.log('✅ УСПЕХ! Соединение с Clever Cloud установлено.');
         connection.release();
 
-        // --- СОЗДАНИЕ ТАБЛИЦ ---
+        // --- СОЗДАНИЕ ТАБЛИЦ (ваш код) ---
         
+        // Пользователи
         await pool.execute(`CREATE TABLE IF NOT EXISTS users (
             id INT PRIMARY KEY AUTO_INCREMENT,
             username VARCHAR(50) UNIQUE NOT NULL,
@@ -48,6 +51,7 @@ async function initDatabase() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
+        // Видео
         await pool.execute(`CREATE TABLE IF NOT EXISTS videos (
             id INT PRIMARY KEY AUTO_INCREMENT,
             user_id INT NOT NULL,
@@ -62,6 +66,7 @@ async function initDatabase() {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // Комментарии
         await pool.execute(`CREATE TABLE IF NOT EXISTS comments (
             id INT PRIMARY KEY AUTO_INCREMENT,
             video_id INT NOT NULL,
@@ -72,6 +77,7 @@ async function initDatabase() {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // Подписки
         await pool.execute(`CREATE TABLE IF NOT EXISTS subscriptions (
             id INT PRIMARY KEY AUTO_INCREMENT,
             subscriber_id INT NOT NULL,
@@ -82,6 +88,7 @@ async function initDatabase() {
             FOREIGN KEY (channel_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // Лайки
         await pool.execute(`CREATE TABLE IF NOT EXISTS video_reactions (
             id INT PRIMARY KEY AUTO_INCREMENT,
             video_id INT NOT NULL,
@@ -93,6 +100,7 @@ async function initDatabase() {
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // Бан IP
          await pool.execute(`CREATE TABLE IF NOT EXISTS ip_bans (
             id INT PRIMARY KEY AUTO_INCREMENT,
             ip_address VARCHAR(45) NOT NULL UNIQUE,
@@ -102,6 +110,7 @@ async function initDatabase() {
             FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // Логи IP
         await pool.execute(`CREATE TABLE IF NOT EXISTS user_ips (
             id INT PRIMARY KEY AUTO_INCREMENT,
             user_id INT NOT NULL,
@@ -112,6 +121,7 @@ async function initDatabase() {
             INDEX idx_ip (ip_address)
         )`);
 
+        // Админ логи
         await pool.execute(`CREATE TABLE IF NOT EXISTS admin_logs (
             id INT PRIMARY KEY AUTO_INCREMENT,
             admin_id INT NOT NULL,
@@ -123,11 +133,10 @@ async function initDatabase() {
             FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
         
-        console.log('✅ Таблицы готовы');
+        console.log('✅ Все таблицы проверены и готовы к работе');
 
     } catch (error) {
-        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА ПОДКЛЮЧЕНИЯ:', error.message);
-        console.error('Проверьте, не заблокирован ли доступ к Clever Cloud для IP адресов Render.');
+        console.error('❌ ОШИБКА ПОДКЛЮЧЕНИЯ:', error.message);
     }
 }
 
