@@ -6,7 +6,7 @@
 
 const mysql = require('mysql2/promise');
 
-// Прямые данные для подключения к Clever Cloud
+
 const pool = mysql.createPool({
     host: 'bbrmoi0qdtjqbvctknfg-mysql.services.clever-cloud.com', 
     user: 'uqexiir2rgm3cunz', 
@@ -14,9 +14,11 @@ const pool = mysql.createPool({
     database: 'bbrmoi0qdtjqbvctknfg', 
     port: 3306,
     waitForConnections: true,
-    connectionLimit: 5,
+    
+    // 👇 БЫЛО 5, СТАВЬ 2 (или 1)
+    connectionLimit: 1, 
+    
     queueLimit: 0,
-    // ОБЯЗАТЕЛЬНО для работы Render -> Clever Cloud
     ssl: {
         rejectUnauthorized: false
     }
