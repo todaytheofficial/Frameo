@@ -1,33 +1,25 @@
 /**
- * Конфигурация подключения к MySQL
- * Поддержка Render + Clever Cloud
+ * config/database.js
+ * ЕДИНСТВЕННЫЙ РАБОЧИЙ ВАРИАНТ ДЛЯ RENDER + CLEVER CLOUD
  */
-
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Настройки подключения
-const dbConfig = {
-    // Пробуем найти переменные Render (DB_...) или Clever Cloud (MYSQL_ADDON_...)
-    host: process.env.DB_HOST || process.env.MYSQL_ADDON_HOST || 'localhost',
-    user: process.env.DB_USER || process.env.MYSQL_ADDON_USER || 'root',
-    password: process.env.DB_PASSWORD || process.env.MYSQL_ADDON_PASSWORD || '',
-    database: process.env.DB_NAME || process.env.MYSQL_ADDON_DB || 'frameo',
-    port: process.env.DB_PORT || process.env.MYSQL_ADDON_PORT || 3306,
-    
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: 3306,
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
+    connectionLimit: 5,
     
-    // ВАЖНО: Включаем SSL для соединения между Render и Clever Cloud
-    // Если мы на localhost, SSL можно не использовать (но false не помешает)
+    // !!! ВОТ ЭТОГО НЕ ХВАТАЛО !!!
+    // Без этого Render не подключится к внешней базе
     ssl: {
         rejectUnauthorized: false
     }
-};
-
-// Создаём пул соединений
-const pool = mysql.createPool(dbConfig);
+});
 
 /**
  * Инициализация таблиц базы данных
