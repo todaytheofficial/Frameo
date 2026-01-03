@@ -1,0 +1,262 @@
+<%- include('partials/header', { title: video.title }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <div class="watch-layout">
+            <!-- Основной контент -->
+            <div class="watch-main">
+                <div class="video-player-wrapper">
+                    <video class="video-player" controls autoplay id="videoPlayer">
+                        <source src="/uploads/videos/<%= video.filename %>" type="video/mp4">
+                    </video>
+                </div>
+                
+                <div class="video-details">
+                    <h1><%= video.title %></h1>
+                    
+                    <div class="video-actions">
+                        <span class="video-views">
+                            <svg class="icon"><use href="#icon-views"/></svg>
+                            <span id="viewCount"><%= video.views %></span> просмотров
+                        </span>
+                        
+                        <% if (user) { %>
+                            <button class="reaction-btn <%= userReaction === 'like' ? 'active' : '' %>" 
+                                    id="likeBtn" data-reaction="like">
+                                <svg class="icon"><use href="#icon-like"/></svg>
+                                <span id="likeCount"><%= video.likes %></span>
+                            </button>
+                            <button class="reaction-btn <%= userReaction === 'dislike' ? 'active' : '' %>" 
+                                    id="dislikeBtn" data-reaction="dislike">
+                                <svg class="icon"><use href="#icon-dislike"/></svg>
+                                <span id="dislikeCount"><%= video.dislikes %></span>
+                            </button>
+                        <% } else { %>
+                            <a href="/login" class="reaction-btn">
+                                <svg class="icon"><use href="#icon-like"/></svg>
+                                <span><%= video.likes %></span>
+                            </a>
+                            <a href="/login" class="reaction-btn">
+                                <svg class="icon"><use href="#icon-dislike"/></svg>
+                                <span><%= video.dislikes %></span>
+                            </a>
+                        <% } %>
+                    </div>
+                    
+                    <div class="video-channel">
+                        <a href="/channel/@<%= video.username %>/<%= video.user_id %>">
+                            <img src="/uploads/avatars/<%= video.avatar %>" 
+                                 class="video-channel-avatar"
+                                 onerror="this.src='/images/default-avatar.png'">
+                        </a>
+                        <div class="video-channel-info">
+                            <h3>
+                                <a href="/channel/@<%= video.username %>/<%= video.user_id %>">
+                                    <%= video.username %>
+                                </a>
+                            </h3>
+                            <p class="video-channel-subs">
+                                <svg class="icon icon-sm" style="opacity: 0.5;"><use href="#icon-subscribers"/></svg>
+                                <%= video.subscribers_count %> подписчиков
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <% if (video.description) { %>
+                        <div class="video-description"><%= video.description %></div>
+                    <% } %>
+                </div>
+                
+                <!-- Комментарии -->
+                <div class="comments-section">
+                    <h3 class="comments-title">
+                        <svg class="icon"><use href="#icon-comment"/></svg>
+                        <span id="commentsCount"><%= comments.length %></span> комментариев
+                    </h3>
+                    
+                    <% if (user) { %>
+                        <form class="comment-form" id="commentForm">
+                            <input type="text" id="commentInput" class="form-input" 
+                                   placeholder="Написать комментарий..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary">
+                                <svg class="icon"><use href="#icon-send"/></svg>
+                            </button>
+                        </form>
+                    <% } else { %>
+                        <p style="color: var(--text-muted); margin-bottom: 24px;">
+                            <a href="/login" style="color: white;">Войдите</a>, чтобы оставить комментарий
+                        </p>
+                    <% } %>
+                    
+                    <div class="comments-list" id="commentsList">
+                        <% comments.forEach(comment => { %>
+                            <div class="comment">
+                                <img src="/uploads/avatars/<%= comment.avatar %>" 
+                                     class="comment-avatar"
+                                     onerror="this.src='/images/default-avatar.png'">
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <span class="comment-author"><%= comment.username %></span>
+                                        <span class="comment-date"><%= new Date(comment.created_at).toLocaleDateString('ru-RU') %></span>
+                                    </div>
+                                    <p class="comment-text"><%= comment.text %></p>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Сайдбар -->
+            <div class="sidebar">
+                <h4 class="sidebar-title">Рекомендации</h4>
+                <% recommended.forEach(rec => { %>
+                    <a href="/watch/<%= rec.id %>" class="sidebar-video">
+                        <video src="/uploads/videos/<%= rec.filename %>" class="sidebar-thumbnail" muted preload="metadata"></video>
+                        <div class="sidebar-info">
+                            <h4><%= rec.title %></h4>
+                            <p><%= rec.username %></p>
+                            <p>
+                                <svg class="icon icon-sm" style="opacity: 0.5;"><use href="#icon-views"/></svg>
+                                <%= rec.views %> просмотров
+                            </p>
+                        </div>
+                    </a>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Socket.io -->
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+const videoId = <%= video.id %>;
+const socket = io();
+let userReaction = '<%= userReaction || "" %>';
+
+// Присоединяемся к комнате видео
+socket.emit('join-video', videoId);
+
+// Слушаем обновления реакций от других пользователей
+socket.on('reaction-update', (counts) => {
+    document.getElementById('likeCount').textContent = counts.likes;
+    document.getElementById('dislikeCount').textContent = counts.dislikes;
+});
+
+// Слушаем новые комментарии от других пользователей
+socket.on('new-comment', (comment) => {
+    addCommentToDOM(comment);
+});
+
+// Обновление счётчика комментариев
+socket.on('comments-count', (count) => {
+    document.getElementById('commentsCount').textContent = count;
+});
+
+// Лайк/дизлайк без перезагрузки
+document.querySelectorAll('.reaction-btn[data-reaction]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const reaction = btn.dataset.reaction;
+        
+        try {
+            const res = await fetch(`/watch/${videoId}/react`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reaction })
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Обновляем UI
+                document.getElementById('likeCount').textContent = data.counts.likes;
+                document.getElementById('dislikeCount').textContent = data.counts.dislikes;
+                
+                // Обновляем активные кнопки
+                const likeBtn = document.getElementById('likeBtn');
+                const dislikeBtn = document.getElementById('dislikeBtn');
+                
+                likeBtn.classList.remove('active');
+                dislikeBtn.classList.remove('active');
+                
+                if (data.reaction === 'like') {
+                    likeBtn.classList.add('active');
+                } else if (data.reaction === 'dislike') {
+                    dislikeBtn.classList.add('active');
+                }
+                
+                userReaction = data.reaction;
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    });
+});
+
+// Отправка комментария
+const commentForm = document.getElementById('commentForm');
+if (commentForm) {
+    commentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const input = document.getElementById('commentInput');
+        const text = input.value.trim();
+        
+        if (!text) return;
+        
+        try {
+            const res = await fetch(`/watch/${videoId}/comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            
+            if (res.ok) {
+                input.value = '';
+                // Комментарий придёт через socket.io всем пользователям
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    });
+}
+
+// Добавление комментария в DOM
+function addCommentToDOM(comment) {
+    const commentsList = document.getElementById('commentsList');
+    const date = new Date(comment.created_at).toLocaleDateString('ru-RU');
+    
+    const html = `
+        <div class="comment">
+            <img src="/uploads/avatars/${comment.avatar}" 
+                 class="comment-avatar"
+                 onerror="this.src='/images/default-avatar.png'">
+            <div class="comment-content">
+                <div class="comment-header">
+                    <span class="comment-author">${escapeHtml(comment.username)}</span>
+                    <span class="comment-date">${date}</span>
+                </div>
+                <p class="comment-text">${escapeHtml(comment.text)}</p>
+            </div>
+        </div>
+    `;
+    
+    commentsList.insertAdjacentHTML('afterbegin', html);
+}
+
+// Защита от XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// При уходе со страницы
+window.addEventListener('beforeunload', () => {
+    socket.emit('leave-video', videoId);
+});
+</script>
+
+<%- include('partials/footer') %>

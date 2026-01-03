@@ -1,0 +1,48 @@
+<%- include('partials/header', { title: 'Регистрация' }) %>
+
+<main class="auth-page">
+    <div class="auth-card">
+        <h1 class="auth-title">Регистрация</h1>
+        <p class="auth-subtitle">Создай свой канал на Frameo</p>
+        
+        <% if (error) { %>
+            <div class="auth-error"><%= error %></div>
+        <% } %>
+        
+        <form action="/register" method="POST">
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-input" 
+                       placeholder="твой_ник" required minlength="3" maxlength="50">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-input" 
+                       placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="password">Пароль</label>
+                <input type="password" id="password" name="password" class="form-input" 
+                       placeholder="минимум 6 символов" required minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="confirmPassword">Подтвердите пароль</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" 
+                       placeholder="повторите пароль" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                Создать аккаунт
+            </button>
+        </form>
+        
+        <p class="auth-footer">
+            Уже есть аккаунт? <a href="/login">Войди</a>
+        </p>
+    </div>
+</main>
+
+<%- include('partials/footer') %>

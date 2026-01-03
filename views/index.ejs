@@ -1,0 +1,67 @@
+<%- include('partials/header') %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <div class="video-grid">
+            <% if (videos.length === 0) { %>
+                <p style="color: var(--text-muted); text-align: center; grid-column: 1/-1; padding: 60px 0;">
+                    Видео пока нет. Будь первым!
+                </p>
+            <% } %>
+            
+            <% videos.forEach(video => { %>
+                <div class="video-card">
+                    <a href="/watch/<%= video.id %>" class="video-thumbnail">
+                        <% if (video.thumbnail && video.thumbnail !== 'default_thumb.png') { %>
+                            <img src="/uploads/thumbnails/<%= video.thumbnail %>" alt="<%= video.title %>">
+                        <% } else { %>
+                            <video src="/uploads/videos/<%= video.filename %>" muted preload="metadata"></video>
+                        <% } %>
+                    </a>
+                    <div class="video-info">
+                        <h3 class="video-title">
+                            <a href="/watch/<%= video.id %>"><%= video.title %></a>
+                        </h3>
+                        
+                        <!-- Описание (короткое) -->
+                        <% if (video.description) { %>
+                            <p class="video-description-preview">
+                                <%= video.description.length > 80 ? video.description.substring(0, 80) + '...' : video.description %>
+                            </p>
+                        <% } %>
+                        
+                        <!-- Автор -->
+                        <div class="video-author">
+                            <a href="/channel/@<%= video.username %>/<%= video.user_id %>">
+                                <img src="/uploads/avatars/<%= video.avatar %>" 
+                                     class="channel-avatar-small"
+                                     onerror="this.src='/images/default-avatar.png'">
+                            </a>
+                            <a href="/channel/@<%= video.username %>/<%= video.user_id %>" class="video-author-name">
+                                <%= video.username %>
+                            </a>
+                        </div>
+                        
+                        <!-- Статистика -->
+                        <div class="video-stats">
+                            <span>
+                                <svg class="icon icon-sm"><use href="#icon-views"/></svg>
+                                <%= video.views %>
+                            </span>
+                            <span>
+                                <svg class="icon icon-sm"><use href="#icon-like"/></svg>
+                                <%= video.likes %>
+                            </span>
+                            <span>
+                                <svg class="icon icon-sm"><use href="#icon-comment"/></svg>
+                                <%= video.comments_count || 0 %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+</main>
+
+<%- include('partials/footer') %>

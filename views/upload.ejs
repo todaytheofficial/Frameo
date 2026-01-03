@@ -1,0 +1,84 @@
+<%- include('partials/header', { title: 'Загрузить видео' }) %>
+
+<main class="main">
+    <div class="container page-wrapper" style="max-width: 700px;">
+        <h1 style="margin-bottom: 32px; display: flex; align-items: center; gap: 12px;">
+            <svg class="icon icon-lg"><use href="#icon-upload"/></svg>
+            Загрузить видео
+        </h1>
+        
+        <% if (error) { %>
+            <div class="auth-error"><%= error %></div>
+        <% } %>
+        
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">
+                    <svg class="icon icon-xl"><use href="#icon-upload"/></svg>
+                </div>
+                <p class="upload-text">Нажмите или перетащите видео</p>
+                <p class="upload-hint">MP4, WebM, MOV до 500MB</p>
+                <input type="file" id="videoFile" name="video" accept="video/*" 
+                       style="display: none;" required>
+            </div>
+            
+            <p id="fileName" style="margin-bottom: 20px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;"></p>
+            
+            <div class="form-group">
+                <label class="form-label" for="title">Название</label>
+                <input type="text" id="title" name="title" class="form-input" 
+                       placeholder="Введите название видео" required maxlength="200">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="description">Описание</label>
+                <textarea id="description" name="description" class="form-input" 
+                          placeholder="Расскажите о чём это видео..." rows="5"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <svg class="icon"><use href="#icon-upload"/></svg>
+                Опубликовать
+            </button>
+        </form>
+    </div>
+</main>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const videoFile = document.getElementById('videoFile');
+const fileName = document.getElementById('fileName');
+
+uploadZone.addEventListener('click', () => videoFile.click());
+
+videoFile.addEventListener('change', function() {
+    if (this.files[0]) {
+        fileName.innerHTML = '<svg class="icon icon-sm"><use href="#icon-video"/></svg> ' + this.files[0].name;
+    }
+});
+
+// Drag & Drop
+['dragenter', 'dragover'].forEach(type => {
+    uploadZone.addEventListener(type, (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+});
+
+['dragleave', 'drop'].forEach(type => {
+    uploadZone.addEventListener(type, (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+    });
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length && files[0].type.startsWith('video/')) {
+        videoFile.files = files;
+        fileName.innerHTML = '<svg class="icon icon-sm"><use href="#icon-video"/></svg> ' + files[0].name;
+    }
+});
+</script>
+
+<%- include('partials/footer') %>

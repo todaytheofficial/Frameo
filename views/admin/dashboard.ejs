@@ -1,0 +1,241 @@
+<%- include('../partials/header', { title: 'Админ-панель' }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <!-- Заголовок -->
+        <div class="admin-header">
+            <h1>
+                <svg class="icon icon-lg"><use href="#icon-studio"/></svg>
+                Админ-панель
+            </h1>
+            <p class="admin-subtitle">Добро пожаловать, <%= user.username %></p>
+        </div>
+
+        <!-- Навигация -->
+        <div class="admin-nav">
+            <a href="/admin" class="admin-nav-link active">
+                <svg class="icon"><use href="#icon-studio"/></svg>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-subscribers"/></svg>
+                Пользователи
+            </a>
+            <a href="/admin/videos" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-video"/></svg>
+                Видео
+            </a>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-subscribers"/></svg>
+                </div>
+                <div class="stat-value"><%= stats.users %></div>
+                <div class="stat-label">Пользователей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-video"/></svg>
+                </div>
+                <div class="stat-value"><%= stats.videos %></div>
+                <div class="stat-label">Видео</div>
+            </div>
+            <div class="stat-card" style="border-color: #ff4444;">
+                <div class="stat-icon" style="color: #ff4444;">
+                    <svg class="icon icon-xl"><use href="#icon-delete"/></svg>
+                </div>
+                <div class="stat-value" style="color: #ff4444;"><%= stats.banned %></div>
+                <div class="stat-label">Забанено</div>
+            </div>
+            <div class="stat-card" style="border-color: #ff8800;">
+                <div class="stat-icon" style="color: #ff8800;">
+                    <svg class="icon icon-xl"><use href="#icon-views"/></svg>
+                </div>
+                <div class="stat-value" style="color: #ff8800;"><%= stats.ipBans %></div>
+                <div class="stat-label">IP банов</div>
+            </div>
+        </div>
+
+        <!-- Быстрый бан IP -->
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-delete"/></svg>
+                Быстрый бан IP
+            </h2>
+            <form class="quick-form" id="banIpForm">
+                <input type="text" id="banIpInput" class="form-input" placeholder="IP адрес" required>
+                <input type="text" id="banIpReason" class="form-input" placeholder="Причина">
+                <button type="submit" class="btn btn-danger">Забанить IP</button>
+            </form>
+        </div>
+
+        <!-- Забаненные IP -->
+        <% if (ipBans.length > 0) { %>
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-views"/></svg>
+                Забаненные IP (<%= ipBans.length %>)
+            </h2>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>IP адрес</th>
+                            <th>Причина</th>
+                            <th>Забанил</th>
+                            <th>Дата</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% ipBans.forEach(ban => { %>
+                        <tr>
+                            <td><code><%= ban.ip_address %></code></td>
+                            <td><%= ban.reason %></td>
+                            <td><%= ban.banned_by_name %></td>
+                            <td><%= new Date(ban.created_at).toLocaleDateString('ru-RU') %></td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="unbanIP('<%= ban.ip_address %>')">
+                                    Разбанить
+                                </button>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Последние пользователи -->
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-subscribers"/></svg>
+                Последние пользователи
+            </h2>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Email</th>
+                            <th>IP</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% recentUsers.forEach(u => { %>
+                        <tr class="<%= u.is_banned ? 'banned-row' : '' %>">
+                            <td><%= u.id %></td>
+                            <td>
+                                <div class="user-cell">
+                                    <img src="/uploads/avatars/<%= u.avatar %>" 
+                                         onerror="this.src='/images/default-avatar.png'"
+                                         class="user-avatar-sm">
+                                    <span>
+                                        <%= u.username %>
+                                        <% if (u.is_admin) { %>
+                                            <span class="badge badge-admin">ADMIN</span>
+                                        <% } %>
+                                    </span>
+                                </div>
+                            </td>
+                            <td><%= u.email %></td>
+                            <td><code><%= u.last_ip || 'N/A' %></code></td>
+                            <td>
+                                <% if (u.is_banned) { %>
+                                    <span class="badge badge-danger">ЗАБАНЕН</span>
+                                <% } else { %>
+                                    <span class="badge badge-success">Активен</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <a href="/admin/user/<%= u.id %>" class="btn btn-secondary btn-sm">
+                                    Подробнее
+                                </a>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Логи действий -->
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-time"/></svg>
+                Логи действий
+            </h2>
+            <div class="admin-logs">
+                <% adminLogs.forEach(log => { %>
+                <div class="log-item">
+                    <span class="log-action <%= log.action.includes('BAN') ? 'log-danger' : '' %>">
+                        <%= log.action %>
+                    </span>
+                    <span class="log-admin"><%= log.admin_name %></span>
+                    <span class="log-target"><%= log.target_type %> #<%= log.target_id || '-' %></span>
+                    <span class="log-date"><%= new Date(log.created_at).toLocaleString('ru-RU') %></span>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+// Бан IP
+document.getElementById('banIpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const ip = document.getElementById('banIpInput').value.trim();
+    const reason = document.getElementById('banIpReason').value.trim();
+    
+    if (!ip) return;
+    
+    try {
+        const res = await fetch('/admin/ip/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, reason })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert('IP забанен!');
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
+
+// Разбан IP
+async function unbanIP(ip) {
+    if (!confirm(`Разбанить IP ${ip}?`)) return;
+    
+    try {
+        const res = await fetch(`/admin/ip/ban/${encodeURIComponent(ip)}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка разбана');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,101 @@
+<%- include('../partials/header', { title: 'Пользователи — Админка' }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <div class="admin-header">
+            <h1>
+                <svg class="icon icon-lg"><use href="#icon-subscribers"/></svg>
+                Управление пользователями
+            </h1>
+        </div>
+
+        <!-- Навигация -->
+        <div class="admin-nav">
+            <a href="/admin" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-studio"/></svg>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="admin-nav-link active">
+                <svg class="icon"><use href="#icon-subscribers"/></svg>
+                Пользователи
+            </a>
+            <a href="/admin/videos" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-video"/></svg>
+                Видео
+            </a>
+        </div>
+
+        <!-- Поиск -->
+        <form class="search-form" method="GET">
+            <input type="text" name="search" class="form-input" 
+                   placeholder="Поиск по нику, email или IP..." 
+                   value="<%= search %>">
+            <button type="submit" class="btn btn-primary">
+                <svg class="icon"><use href="#icon-views"/></svg>
+                Найти
+            </button>
+        </form>
+
+        <!-- Таблица пользователей -->
+        <div class="admin-table-wrapper">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Пользователь</th>
+                        <th>Email</th>
+                        <th>IP</th>
+                        <th>Видео</th>
+                        <th>Подписчики</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% users.forEach(u => { %>
+                    <tr class="<%= u.is_banned ? 'banned-row' : '' %>">
+                        <td><%= u.id %></td>
+                        <td>
+                            <div class="user-cell">
+                                <img src="/uploads/avatars/<%= u.avatar %>" 
+                                     onerror="this.src='/images/default-avatar.png'"
+                                     class="user-avatar-sm">
+                                <span>
+                                    <%= u.username %>
+                                    <% if (u.is_admin) { %>
+                                        <span class="badge badge-admin">ADMIN</span>
+                                    <% } %>
+                                </span>
+                            </div>
+                        </td>
+                        <td><%= u.email %></td>
+                        <td><code><%= u.last_ip || 'N/A' %></code></td>
+                        <td><%= u.videos_count %></td>
+                        <td><%= u.subscribers_count %></td>
+                        <td>
+                            <% if (u.is_banned) { %>
+                                <span class="badge badge-danger">ЗАБАНЕН</span>
+                            <% } else { %>
+                                <span class="badge badge-success">Активен</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <a href="/admin/user/<%= u.id %>" class="btn btn-secondary btn-sm">
+                                Управлять
+                            </a>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+
+        <% if (users.length === 0) { %>
+            <p style="text-align: center; color: var(--text-muted); padding: 40px;">
+                Пользователи не найдены
+            </p>
+        <% } %>
+    </div>
+</main>
+
+<%- include('../partials/footer') %>

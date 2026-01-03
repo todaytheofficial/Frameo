@@ -1,0 +1,405 @@
+<%- include('../partials/header', { title: targetUser.username + ' — Админка' }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <a href="/admin/users" class="back-link">
+            ← Назад к списку
+        </a>
+
+        <!-- Инфо пользователя -->
+        <div class="user-profile-card">
+            <img src="/uploads/avatars/<%= targetUser.avatar %>" 
+                 onerror="this.src='/images/default-avatar.png'"
+                 class="user-profile-avatar">
+            <div class="user-profile-info">
+                <h1>
+                    <%= targetUser.username %>
+                    <% if (targetUser.is_admin) { %>
+                        <span class="badge badge-admin">ADMIN</span>
+                    <% } %>
+                    <% if (targetUser.is_banned) { %>
+                        <span class="badge badge-danger">ЗАБАНЕН</span>
+                    <% } %>
+                </h1>
+                <p>ID: <%= targetUser.id %> | Email: <%= targetUser.email %></p>
+                <p>Последний IP: <code><%= targetUser.last_ip || 'N/A' %></code></p>
+                <p>Подписчиков: <%= targetUser.subscribers_count %></p>
+                <p>Регистрация: <%= new Date(targetUser.created_at).toLocaleString('ru-RU') %></p>
+                <% if (targetUser.ban_reason) { %>
+                    <p style="color: #ff4444;">Причина бана: <%= targetUser.ban_reason %></p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="admin-actions-grid">
+            <!-- Подписчики -->
+            <div class="admin-action-card">
+                <h3>
+                    <svg class="icon"><use href="#icon-subscribers"/></svg>
+                    Выдать подписчиков
+                </h3>
+                <form id="subsForm">
+                    <input type="number" id="subsCount" class="form-input" placeholder="Количество" min="0">
+                    <button type="submit" class="btn btn-primary">Выдать</button>
+                </form>
+                <p class="current-value">Сейчас: <span id="currentSubs"><%= targetUser.subscribers_count %></span></p>
+            </div>
+
+            <!-- Бан -->
+            <div class="admin-action-card">
+                <h3>
+                    <svg class="icon"><use href="#icon-delete"/></svg>
+                    Бан аккаунта
+                </h3>
+                <% if (!targetUser.is_banned) { %>
+                    <form id="banForm">
+                        <input type="text" id="banReason" class="form-input" placeholder="Причина бана">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="banIP">
+                            Также забанить все IP
+                        </label>
+                        <button type="submit" class="btn btn-danger">Забанить</button>
+                    </form>
+                <% } else { %>
+                    <button class="btn btn-success" onclick="unbanUser()">Разбанить</button>
+                <% } %>
+            </div>
+
+            <!-- Админ права -->
+            <% if (user.username === 'Today_AIDK') { %>
+            <div class="admin-action-card">
+                <h3>
+                    <svg class="icon"><use href="#icon-studio"/></svg>
+                    Права администратора
+                </h3>
+                <button class="btn <%= targetUser.is_admin ? 'btn-danger' : 'btn-primary' %>" 
+                        onclick="toggleAdmin()">
+                    <%= targetUser.is_admin ? 'Забрать права' : 'Выдать права' %>
+                </button>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- IP адреса -->
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-views"/></svg>
+                IP адреса пользователя (<%= ips.length %>)
+            </h2>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>IP адрес</th>
+                            <th>Первый вход</th>
+                            <th>Последний вход</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% ips.forEach(ip => { %>
+                        <tr>
+                            <td><code><%= ip.ip_address %></code></td>
+                            <td><%= new Date(ip.first_seen).toLocaleString('ru-RU') %></td>
+                            <td><%= new Date(ip.last_seen).toLocaleString('ru-RU') %></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="banIP('<%= ip.ip_address %>')">
+                                    Забанить IP
+                                </button>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Связанные аккаунты -->
+        <% if (relatedAccounts.length > 0) { %>
+        <div class="admin-section">
+            <h2 style="color: #ff8800;">
+                <svg class="icon"><use href="#icon-subscribers"/></svg>
+                Возможные альт-аккаунты (<%= relatedAccounts.length %>)
+            </h2>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Общий IP</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% relatedAccounts.forEach(acc => { %>
+                        <tr class="<%= acc.is_banned ? 'banned-row' : '' %>">
+                            <td><%= acc.id %></td>
+                            <td><%= acc.username %></td>
+                            <td><code><%= acc.ip_address %></code></td>
+                            <td>
+                                <% if (acc.is_banned) { %>
+                                    <span class="badge badge-danger">ЗАБАНЕН</span>
+                                <% } else { %>
+                                    <span class="badge badge-success">Активен</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <a href="/admin/user/<%= acc.id %>" class="btn btn-secondary btn-sm">
+                                    Открыть
+                                </a>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Видео пользователя -->
+        <div class="admin-section">
+            <h2>
+                <svg class="icon"><use href="#icon-video"/></svg>
+                Видео пользователя (<%= videos.length %>)
+            </h2>
+            <% if (videos.length > 0) { %>
+                <div class="video-list">
+                    <% videos.forEach(video => { %>
+                    <div class="video-list-item" id="video-<%= video.id %>">
+                        <video src="/uploads/videos/<%= video.filename %>" class="video-list-thumb" muted></video>
+                        <div class="video-list-info">
+                            <h4><%= video.title %></h4>
+                            <p>
+                                <svg class="icon icon-sm"><use href="#icon-views"/></svg> <%= video.views %> |
+                                <svg class="icon icon-sm"><use href="#icon-like"/></svg> <%= video.likes %> |
+                                <svg class="icon icon-sm"><use href="#icon-dislike"/></svg> <%= video.dislikes %>
+                            </p>
+                        </div>
+                        <div class="video-list-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="addReactions(<%= video.id %>)">
+                                Накрутить
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteVideo(<%= video.id %>)">
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <p style="color: var(--text-muted);">Нет видео</p>
+            <% } %>
+        </div>
+    </div>
+</main>
+
+<!-- Модалка для накрутки -->
+<div class="modal-overlay" id="reactionsModal" style="display: none;">
+    <div class="modal">
+        <h3>Накрутить реакции</h3>
+        <form id="reactionsForm">
+            <input type="hidden" id="reactionsVideoId">
+            <div class="form-group">
+                <label class="form-label">Лайки</label>
+                <input type="number" id="addLikes" class="form-input" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дизлайки</label>
+                <input type="number" id="addDislikes" class="form-input" value="0" min="0">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Применить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const userId = <%= targetUser.id %>;
+
+// Выдача подписчиков
+document.getElementById('subsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const count = parseInt(document.getElementById('subsCount').value) || 0;
+    
+    try {
+        const res = await fetch(`/admin/user/${userId}/subscribers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            document.getElementById('currentSubs').textContent = data.subscribers;
+            document.getElementById('subsCount').value = '';
+            alert('Подписчики добавлены!');
+        } else {
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
+
+// Бан пользователя
+<% if (!targetUser.is_banned) { %>
+document.getElementById('banForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (!confirm('Забанить этого пользователя?')) return;
+    
+    const reason = document.getElementById('banReason').value.trim();
+    const banIP = document.getElementById('banIP').checked;
+    
+    try {
+        const res = await fetch(`/admin/user/${userId}/ban`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason, banIP })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert('Пользователь забанен!');
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
+<% } %>
+
+// Разбан
+async function unbanUser() {
+    if (!confirm('Разбанить этого пользователя?')) return;
+    
+    try {
+        const res = await fetch(`/admin/user/${userId}/unban`, {
+            method: 'POST'
+        });
+        
+        if (res.ok) {
+            alert('Пользователь разбанен!');
+            location.reload();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+
+// Бан IP
+async function banIP(ip) {
+    const reason = prompt('Причина бана IP:');
+    if (reason === null) return;
+    
+    try {
+        const res = await fetch('/admin/ip/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, reason })
+        });
+        
+        if (res.ok) {
+            alert('IP забанен!');
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+
+// Переключение админ прав
+async function toggleAdmin() {
+    if (!confirm('Изменить права администратора?')) return;
+    
+    try {
+        const res = await fetch(`/admin/user/${userId}/toggle-admin`, {
+            method: 'POST'
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert(data.isAdmin ? 'Права выданы!' : 'Права забраны!');
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+
+// Накрутка реакций
+function addReactions(videoId) {
+    document.getElementById('reactionsVideoId').value = videoId;
+    document.getElementById('reactionsModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('reactionsModal').style.display = 'none';
+}
+
+document.getElementById('reactionsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const videoId = document.getElementById('reactionsVideoId').value;
+    const likes = parseInt(document.getElementById('addLikes').value) || 0;
+    const dislikes = parseInt(document.getElementById('addDislikes').value) || 0;
+    
+    try {
+        const res = await fetch(`/admin/video/${videoId}/reactions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ likes, dislikes })
+        });
+        
+        if (res.ok) {
+            alert('Реакции добавлены!');
+            closeModal();
+            location.reload();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
+
+// Удаление видео
+async function deleteVideo(videoId) {
+    if (!confirm('Удалить это видео?')) return;
+    
+    try {
+        const res = await fetch(`/admin/video/${videoId}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            document.getElementById(`video-${videoId}`).remove();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+</script>
+
+<%- include('../partials/footer') %>

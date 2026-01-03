@@ -1,0 +1,13 @@
+<%- include('partials/header', { title: 'Доступ запрещён' }) %>
+
+<main class="main">
+    <div class="container">
+        <div class="error-page">
+            <div class="error-code" style="color: #ff4444; opacity: 0.3;">403</div>
+            <p class="error-message"><%= message || 'Доступ запрещён' %></p>
+            <a href="/" class="btn btn-primary">На главную</a>
+        </div>
+    </div>
+</main>
+
+<%- include('partials/footer') %>

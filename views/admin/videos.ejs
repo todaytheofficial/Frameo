@@ -1,0 +1,156 @@
+<%- include('../partials/header', { title: 'Видео — Админка' }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <div class="admin-header">
+            <h1>
+                <svg class="icon icon-lg"><use href="#icon-video"/></svg>
+                Управление видео
+            </h1>
+        </div>
+
+        <!-- Навигация -->
+        <div class="admin-nav">
+            <a href="/admin" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-studio"/></svg>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="admin-nav-link">
+                <svg class="icon"><use href="#icon-subscribers"/></svg>
+                Пользователи
+            </a>
+            <a href="/admin/videos" class="admin-nav-link active">
+                <svg class="icon"><use href="#icon-video"/></svg>
+                Видео
+            </a>
+        </div>
+
+        <!-- Поиск -->
+        <form class="search-form" method="GET">
+            <input type="text" name="search" class="form-input" 
+                   placeholder="Поиск по названию или автору..." 
+                   value="<%= search %>">
+            <button type="submit" class="btn btn-primary">
+                <svg class="icon"><use href="#icon-views"/></svg>
+                Найти
+            </button>
+        </form>
+
+        <!-- Список видео -->
+        <div class="video-list">
+            <% videos.forEach(video => { %>
+            <div class="video-list-item" id="video-<%= video.id %>">
+                <a href="/watch/<%= video.id %>" target="_blank">
+                    <video src="/uploads/videos/<%= video.filename %>" class="video-list-thumb" muted></video>
+                </a>
+                <div class="video-list-info">
+                    <h4><a href="/watch/<%= video.id %>" target="_blank"><%= video.title %></a></h4>
+                    <p>
+                        Автор: <a href="/admin/user/<%= video.user_id %>"><%= video.username %></a>
+                    </p>
+                    <p>
+                        <svg class="icon icon-sm"><use href="#icon-views"/></svg> <%= video.views %> |
+                        <svg class="icon icon-sm"><use href="#icon-like"/></svg> <%= video.likes %> |
+                        <svg class="icon icon-sm"><use href="#icon-dislike"/></svg> <%= video.dislikes %>
+                    </p>
+                </div>
+                <div class="video-list-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="addReactions(<%= video.id %>)">
+                        Накрутить
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteVideo(<%= video.id %>)">
+                        Удалить
+                    </button>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+
+        <% if (videos.length === 0) { %>
+            <p style="text-align: center; color: var(--text-muted); padding: 40px;">
+                Видео не найдены
+            </p>
+        <% } %>
+    </div>
+</main>
+
+<!-- Модалка для накрутки -->
+<div class="modal-overlay" id="reactionsModal" style="display: none;">
+    <div class="modal">
+        <h3>Накрутить реакции</h3>
+        <form id="reactionsForm">
+            <input type="hidden" id="reactionsVideoId">
+            <div class="form-group">
+                <label class="form-label">Лайки</label>
+                <input type="number" id="addLikes" class="form-input" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дизлайки</label>
+                <input type="number" id="addDislikes" class="form-input" value="0" min="0">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Применить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addReactions(videoId) {
+    document.getElementById('reactionsVideoId').value = videoId;
+    document.getElementById('reactionsModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('reactionsModal').style.display = 'none';
+}
+
+document.getElementById('reactionsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const videoId = document.getElementById('reactionsVideoId').value;
+    const likes = parseInt(document.getElementById('addLikes').value) || 0;
+    const dislikes = parseInt(document.getElementById('addDislikes').value) || 0;
+    
+    try {
+        const res = await fetch(`/admin/video/${videoId}/reactions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ likes, dislikes })
+        });
+        
+        if (res.ok) {
+            alert('Реакции добавлены!');
+            closeModal();
+            location.reload();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+});
+
+async function deleteVideo(videoId) {
+    if (!confirm('Удалить это видео?')) return;
+    
+    try {
+        const res = await fetch(`/admin/video/${videoId}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            document.getElementById(`video-${videoId}`).remove();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Ошибка');
+        }
+    } catch (error) {
+        alert('Ошибка сети');
+    }
+}
+</script>
+
+<%- include('../partials/footer') %>

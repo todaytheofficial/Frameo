@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Доступ заблокирован — Frameo</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .banned-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        .banned-card {
+            max-width: 500px;
+            background: var(--bg-secondary);
+            border: 2px solid #ff4444;
+            border-radius: 16px;
+            padding: 60px 40px;
+        }
+        .banned-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+        .banned-title {
+            font-size: 2rem;
+            color: #ff4444;
+            margin-bottom: 16px;
+        }
+        .banned-reason {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 1.1rem;
+        }
+        .banned-type {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="banned-page">
+        <div class="banned-card">
+            <div class="banned-icon">🚫</div>
+            <h1 class="banned-title">Доступ заблокирован</h1>
+            <p class="banned-reason">
+                <strong>Причина:</strong> <%= reason %>
+            </p>
+            <p class="banned-type">
+                <% if (type === 'ip') { %>
+                    Ваш IP адрес заблокирован.
+                <% } else { %>
+                    Ваш аккаунт заблокирован.
+                <% } %>
+            </p>
+        </div>
+    </main>
+</body>
+</html>

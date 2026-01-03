@@ -1,0 +1,67 @@
+<%- include('partials/header', { title: '@' + channel.username }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <!-- Шапка канала -->
+        <div class="channel-header">
+            <div class="channel-info">
+                <img src="/uploads/avatars/<%= channel.avatar %>" 
+                     alt="<%= channel.username %>" 
+                     class="channel-avatar"
+                     onerror="this.src='/images/default-avatar.png'">
+                
+                <div class="channel-details">
+                    <h1><%= channel.username %></h1>
+                    <p class="channel-username">@<%= channel.username %></p>
+                    <p class="channel-stats">
+                        <%= channel.subscribers_count %> подписчиков • <%= videos.length %> видео
+                    </p>
+                </div>
+                
+                <div class="channel-actions">
+                    <% if (isOwner) { %>
+                        <a href="/studio" class="btn btn-primary">Creative Studio</a>
+                        <a href="/upload" class="btn btn-secondary">Загрузить видео</a>
+                    <% } else if (user) { %>
+                        <button class="btn <%= isSubscribed ? 'btn-secondary' : 'btn-primary' %>" 
+                                id="subscribeBtn"
+                                data-channel="<%= channel.id %>">
+                            <%= isSubscribed ? 'Отписаться' : 'Подписаться' %>
+                        </button>
+                    <% } else { %>
+                        <a href="/login" class="btn btn-primary">Подписаться</a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Видео канала -->
+        <h2 style="margin-bottom: 24px; font-size: 1.25rem;">Видео</h2>
+        
+        <div class="video-grid">
+            <% if (videos.length === 0) { %>
+                <p style="color: var(--text-muted); grid-column: 1/-1;">
+                    На этом канале пока нет видео
+                </p>
+            <% } %>
+            
+            <% videos.forEach(video => { %>
+                <div class="video-card">
+                    <a href="/watch/<%= video.id %>" class="video-thumbnail">
+                        <video src="/uploads/videos/<%= video.filename %>" muted></video>
+                    </a>
+                    <div class="video-info">
+                        <h3 class="video-title">
+                            <a href="/watch/<%= video.id %>"><%= video.title %></a>
+                        </h3>
+                        <div class="video-meta">
+                            <span><%= video.views %> просмотров</span>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+</main>
+
+<%- include('partials/footer') %>

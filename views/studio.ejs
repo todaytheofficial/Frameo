@@ -1,0 +1,146 @@
+<%- include('partials/header', { title: 'Creative Studio' }) %>
+
+<main class="main">
+    <div class="container page-wrapper">
+        <div class="studio-header">
+            <h1 class="studio-title">
+                <svg class="icon icon-lg"><use href="#icon-studio"/></svg>
+                Creative Studio
+            </h1>
+            <p class="studio-subtitle">Управление каналом @<%= user.username %></p>
+        </div>
+        
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-views"/></svg>
+                </div>
+                <div class="stat-value"><%= stats.totalViews %></div>
+                <div class="stat-label">Просмотров</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-like"/></svg>
+                </div>
+                <div class="stat-value"><%= stats.totalLikes %></div>
+                <div class="stat-label">Лайков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-dislike"/></svg>
+                </div>
+                <div class="stat-value"><%= stats.totalDislikes %></div>
+                <div class="stat-label">Дизлайков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-comment"/></svg>
+                </div>
+                <div class="stat-value"><%= totalComments %></div>
+                <div class="stat-label">Комментариев</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-subscribers"/></svg>
+                </div>
+                <div class="stat-value"><%= user.subscribers_count %></div>
+                <div class="stat-label">Подписчиков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg class="icon icon-xl"><use href="#icon-video"/></svg>
+                </div>
+                <div class="stat-value"><%= videos.length %></div>
+                <div class="stat-label">Видео</div>
+            </div>
+        </div>
+        
+        <!-- Аватар -->
+        <div style="margin-bottom: 40px; padding: 24px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color);">
+            <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <svg class="icon"><use href="#icon-user"/></svg>
+                Аватар канала
+            </h3>
+            <form action="/studio/avatar" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                <img src="/uploads/avatars/<%= user.avatar %>" 
+                     style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);"
+                     onerror="this.src='/images/default-avatar.png'">
+                <input type="file" name="avatar" accept="image/*" class="form-input" style="max-width: 300px;">
+                <button type="submit" class="btn btn-secondary">Обновить</button>
+            </form>
+        </div>
+        
+        <!-- Список видео -->
+        <h2 style="margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-video"/></svg>
+            Мои видео
+        </h2>
+        
+        <% if (videos.length === 0) { %>
+            <div style="text-align: center; padding: 60px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color);">
+                <svg class="icon icon-xl" style="opacity: 0.3; margin-bottom: 16px;"><use href="#icon-upload"/></svg>
+                <p style="color: var(--text-muted); margin-bottom: 16px;">У вас пока нет видео</p>
+                <a href="/upload" class="btn btn-primary">
+                    <svg class="icon"><use href="#icon-upload"/></svg>
+                    Загрузить первое видео
+                </a>
+            </div>
+        <% } else { %>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <% videos.forEach(video => { %>
+                    <div style="display: flex; gap: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; align-items: center; border: 1px solid var(--border-color);">
+                        <video src="/uploads/videos/<%= video.filename %>" 
+                               style="width: 180px; height: 100px; object-fit: cover; border-radius: 8px; background: var(--bg-tertiary);" 
+                               muted preload="metadata"></video>
+                        <div style="flex: 1; min-width: 0;">
+                            <h4 style="margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= video.title %></h4>
+                            <div style="display: flex; gap: 16px; color: var(--text-muted); font-size: 0.9rem; flex-wrap: wrap;">
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <svg class="icon icon-sm"><use href="#icon-views"/></svg>
+                                    <%= video.views %>
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <svg class="icon icon-sm"><use href="#icon-like"/></svg>
+                                    <%= video.likes %>
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px;">
+                                    <svg class="icon icon-sm"><use href="#icon-dislike"/></svg>
+                                    <%= video.dislikes %>
+                                </span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="/watch/<%= video.id %>" class="btn btn-secondary">
+                                <svg class="icon icon-sm"><use href="#icon-play"/></svg>
+                                Смотреть
+                            </a>
+                            <button class="btn btn-danger" onclick="deleteVideo(<%= video.id %>)">
+                                <svg class="icon icon-sm"><use href="#icon-delete"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+</main>
+
+<script>
+async function deleteVideo(id) {
+    if (!confirm('Удалить это видео? Это действие нельзя отменить.')) return;
+    
+    try {
+        const res = await fetch('/video/' + id, { method: 'DELETE' });
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка удаления');
+        }
+    } catch (error) {
+        alert('Ошибка удаления');
+    }
+}
+</script>
+
+<%- include('partials/footer') %>
