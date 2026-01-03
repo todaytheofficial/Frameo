@@ -1,166 +1,133 @@
 /**
  * config/database.js
- * ЕДИНСТВЕННЫЙ РАБОЧИЙ ВАРИАНТ ДЛЯ RENDER + CLEVER CLOUD
+ * Прямое подключение для устранения ошибки ECONNREFUSED
  */
-const mysql = require('mysql2/promise');
-require('dotenv').config();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+const mysql = require('mysql2/promise');
+
+// Мы используем данные напрямую, чтобы исключить ошибку переменных
+const dbConfig = {
+    host: 'bbrmoi0qdtjqbvctknfg-mysql.services.clever-cloud.com', 
+    user: 'uqexiir2rgm3cunz', 
+    password: 'CW8asr6RhWONjpfvGPVH', 
+    database: 'bbrmoi0qdtjqbvctknfg', 
     port: 3306,
     waitForConnections: true,
     connectionLimit: 5,
-    
-    // !!! ВОТ ЭТОГО НЕ ХВАТАЛО !!!
-    // Без этого Render не подключится к внешней базе
+    queueLimit: 0,
+    // ВАЖНО: SSL обязателен для связи Render -> Clever Cloud
     ssl: {
         rejectUnauthorized: false
     }
-});
+};
 
-/**
- * Инициализация таблиц базы данных
- */
+const pool = mysql.createPool(dbConfig);
+
 async function initDatabase() {
     try {
-        console.log(`🔌 Попытка подключения к БД: ${dbConfig.host}`);
+        console.log(`🔌 [DEBUG] Попытка подключения к: ${dbConfig.host}`);
         
-        // Проверяем соединение перед созданием таблиц
+        // Тестовое соединение
         const connection = await pool.getConnection();
-        console.log('✅ Соединение с базой установлено!');
+        console.log('✅ [DEBUG] УСПЕХ! База данных подключена.');
         connection.release();
 
-        // Таблица пользователей
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                username VARCHAR(50) UNIQUE NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                avatar VARCHAR(255) DEFAULT 'default.png',
-                subscribers_count INT DEFAULT 0,
-                is_admin BOOLEAN DEFAULT FALSE,
-                is_banned BOOLEAN DEFAULT FALSE,
-                ban_reason VARCHAR(255) DEFAULT NULL,
-                last_ip VARCHAR(45) DEFAULT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+        // --- СОЗДАНИЕ ТАБЛИЦ ---
+        
+        await pool.execute(`CREATE TABLE IF NOT EXISTS users (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            avatar VARCHAR(255) DEFAULT 'default.png',
+            subscribers_count INT DEFAULT 0,
+            is_admin BOOLEAN DEFAULT FALSE,
+            is_banned BOOLEAN DEFAULT FALSE,
+            ban_reason VARCHAR(255) DEFAULT NULL,
+            last_ip VARCHAR(45) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
 
-        // Таблица видео
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS videos (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                user_id INT NOT NULL,
-                title VARCHAR(200) NOT NULL,
-                description TEXT,
-                filename VARCHAR(255) NOT NULL,
-                thumbnail VARCHAR(255) DEFAULT 'default_thumb.png',
-                views INT DEFAULT 0,
-                likes INT DEFAULT 0,
-                dislikes INT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS videos (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id INT NOT NULL,
+            title VARCHAR(200) NOT NULL,
+            description TEXT,
+            filename VARCHAR(255) NOT NULL,
+            thumbnail VARCHAR(255) DEFAULT 'default_thumb.png',
+            views INT DEFAULT 0,
+            likes INT DEFAULT 0,
+            dislikes INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
 
-        // Таблица комментариев
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS comments (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                video_id INT NOT NULL,
-                user_id INT NOT NULL,
-                text TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS comments (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            video_id INT NOT NULL,
+            user_id INT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
 
-        // Таблица подписок
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS subscriptions (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                subscriber_id INT NOT NULL,
-                channel_id INT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_sub (subscriber_id, channel_id),
-                FOREIGN KEY (subscriber_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY (channel_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS subscriptions (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            subscriber_id INT NOT NULL,
+            channel_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_sub (subscriber_id, channel_id),
+            FOREIGN KEY (subscriber_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (channel_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
 
-        // Таблица лайков/дизлайков
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS video_reactions (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                video_id INT NOT NULL,
-                user_id INT NOT NULL,
-                reaction ENUM('like', 'dislike') NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_reaction (video_id, user_id),
-                FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS video_reactions (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            video_id INT NOT NULL,
+            user_id INT NOT NULL,
+            reaction ENUM('like', 'dislike') NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_reaction (video_id, user_id),
+            FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
 
-        // Таблица забаненных IP
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS ip_bans (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                ip_address VARCHAR(45) NOT NULL UNIQUE,
-                reason VARCHAR(255) DEFAULT 'Нарушение правил',
-                banned_by INT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+         await pool.execute(`CREATE TABLE IF NOT EXISTS ip_bans (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            ip_address VARCHAR(45) NOT NULL UNIQUE,
+            reason VARCHAR(255) DEFAULT 'Нарушение правил',
+            banned_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE CASCADE
+        )`);
 
-        // Таблица логов IP
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS user_ips (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                user_id INT NOT NULL,
-                ip_address VARCHAR(45) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                INDEX idx_user_ip (user_id, ip_address),
-                INDEX idx_ip (ip_address)
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS user_ips (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id INT NOT NULL,
+            ip_address VARCHAR(45) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_user_ip (user_id, ip_address),
+            INDEX idx_ip (ip_address)
+        )`);
 
-        // Таблица логов действий админов
-        await pool.execute(`
-            CREATE TABLE IF NOT EXISTS admin_logs (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                admin_id INT NOT NULL,
-                action VARCHAR(100) NOT NULL,
-                target_type VARCHAR(50) NOT NULL,
-                target_id INT,
-                details TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
+        await pool.execute(`CREATE TABLE IF NOT EXISTS admin_logs (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            admin_id INT NOT NULL,
+            action VARCHAR(100) NOT NULL,
+            target_type VARCHAR(50) NOT NULL,
+            target_id INT,
+            details TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
+        
+        console.log('✅ Таблицы готовы');
 
-        // Создаем главного админа
-        try {
-            const [admins] = await pool.execute('SELECT id FROM users WHERE username = ?', ['Today_AIDK']);
-            if (admins.length > 0) {
-                await pool.execute('UPDATE users SET is_admin = TRUE WHERE id = ?', [admins[0].id]);
-                console.log('👑 Today_AIDK права админа подтверждены');
-            }
-        } catch (e) {
-            // Игнорируем ошибку если таблицы еще пустые
-        }
-
-        console.log('✅ База данных инициализирована');
     } catch (error) {
-        console.error('❌ Ошибка инициализации БД:', error.message);
-        // Не выбрасываем ошибку, чтобы сервер не падал, а писал логи
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА ПОДКЛЮЧЕНИЯ:', error.message);
+        console.error('Проверьте, не заблокирован ли доступ к Clever Cloud для IP адресов Render.');
     }
 }
 
