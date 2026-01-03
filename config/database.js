@@ -1,28 +1,47 @@
 /**
  * Конфигурация подключения к MySQL
- * Используем mysql2 с поддержкой промисов
+ * Поддержка Render + Clever Cloud
  */
 
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Создаём пул соединений для лучшей производительности
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+// Настройки подключения
+const dbConfig = {
+    // Пробуем найти переменные Render (DB_...) или Clever Cloud (MYSQL_ADDON_...)
+    host: process.env.DB_HOST || process.env.MYSQL_ADDON_HOST || 'localhost',
+    user: process.env.DB_USER || process.env.MYSQL_ADDON_USER || 'root',
+    password: process.env.DB_PASSWORD || process.env.MYSQL_ADDON_PASSWORD || '',
+    database: process.env.DB_NAME || process.env.MYSQL_ADDON_DB || 'frameo',
+    port: process.env.DB_PORT || process.env.MYSQL_ADDON_PORT || 3306,
+    
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
-});
+    queueLimit: 0,
+    
+    // ВАЖНО: Включаем SSL для соединения между Render и Clever Cloud
+    // Если мы на localhost, SSL можно не использовать (но false не помешает)
+    ssl: {
+        rejectUnauthorized: false
+    }
+};
+
+// Создаём пул соединений
+const pool = mysql.createPool(dbConfig);
 
 /**
  * Инициализация таблиц базы данных
  */
 async function initDatabase() {
     try {
-        // Таблица пользователей (с полями для админки)
+        console.log(`🔌 Попытка подключения к БД: ${dbConfig.host}`);
+        
+        // Проверяем соединение перед созданием таблиц
+        const connection = await pool.getConnection();
+        console.log('✅ Соединение с базой установлено!');
+        connection.release();
+
+        // Таблица пользователей
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -96,8 +115,6 @@ async function initDatabase() {
             )
         `);
 
-        // ====== НОВЫЕ ТАБЛИЦЫ ДЛЯ АДМИНКИ ======
-
         // Таблица забаненных IP
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS ip_bans (
@@ -110,7 +127,7 @@ async function initDatabase() {
             )
         `);
 
-        // Таблица логов IP пользователей
+        // Таблица логов IP
         await pool.execute(`
             CREATE TABLE IF NOT EXISTS user_ips (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -137,25 +154,21 @@ async function initDatabase() {
             )
         `);
 
-        // ====== СОЗДАЁМ ГЛАВНОГО АДМИНА ======
-        // Проверяем есть ли Today_AIDK
-        const [admins] = await pool.execute(
-            'SELECT id FROM users WHERE username = ?',
-            ['Today_AIDK']
-        );
-
-        if (admins.length > 0) {
-            // Делаем его админом
-            await pool.execute(
-                'UPDATE users SET is_admin = TRUE WHERE username = ?',
-                ['Today_AIDK']
-            );
-            console.log('👑 Today_AIDK назначен администратором');
+        // Создаем главного админа
+        try {
+            const [admins] = await pool.execute('SELECT id FROM users WHERE username = ?', ['Today_AIDK']);
+            if (admins.length > 0) {
+                await pool.execute('UPDATE users SET is_admin = TRUE WHERE id = ?', [admins[0].id]);
+                console.log('👑 Today_AIDK права админа подтверждены');
+            }
+        } catch (e) {
+            // Игнорируем ошибку если таблицы еще пустые
         }
 
         console.log('✅ База данных инициализирована');
     } catch (error) {
-        console.error('❌ Ошибка инициализации БД:', error);
+        console.error('❌ Ошибка инициализации БД:', error.message);
+        // Не выбрасываем ошибку, чтобы сервер не падал, а писал логи
     }
 }
 
